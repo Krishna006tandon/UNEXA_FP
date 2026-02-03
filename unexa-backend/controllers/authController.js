@@ -3,27 +3,47 @@ const { User } = require("../models/User");
 const { generateToken } = require("../utils/generateToken");
 
 const signup = async (req, res) => {
-  const { name, username, email, phone, password } = req.body;
-  
-  // Make phone optional for frontend compatibility
-  const searchQuery = phone ? 
-    { $or: [{ email }, { phone }, { username }] } : 
-    { $or: [{ email }, { username }] };
+  try {
+    const { name, username, email, phone, password } = req.body;
     
-  const exists = await User.findOne(searchQuery);
-  if (exists) {
-    return res.status(400).json({ message: "User already exists" });
+    // Validation
+    if (!name || !username || !email || !password) {
+      return res.status(400).json({ message: "Name, username, email, and password are required" });
+    }
+    
+    // Make phone optional for frontend compatibility
+    const searchQuery = phone ? 
+      { $or: [{ email }, { phone }, { username }] } : 
+      { $or: [{ email }, { username }] };
+      
+    const exists = await User.findOne(searchQuery);
+    if (exists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+    
+    const hashed = await bcrypt.hash(password, 10);
+    const userData = { name, username, email, password: hashed };
+    if (phone) userData.phone = phone;
+    
+    const user = await User.create(userData);
+    const token = generateToken({ id: user._id });
+    user.sessions.push({ token, ip: req.ip, device: req.headers["user-agent"] });
+    await user.save();
+    
+    // Remove password from response
+    const userResponse = { ...user.toObject() };
+    delete userResponse.password;
+    
+    return res.status(201).json({ token, user: userResponse });
+  } catch (error) {
+    console.error('Signup error:', error);
+    if (error.code === 11000) {
+      // Duplicate key error
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ message: `${field} already exists` });
+    }
+    return res.status(500).json({ message: "Server error occurred" });
   }
-  
-  const hashed = password ? await bcrypt.hash(password, 10) : undefined;
-  const userData = { name, username, email, password: hashed };
-  if (phone) userData.phone = phone;
-  
-  const user = await User.create(userData);
-  const token = generateToken({ id: user._id });
-  user.sessions.push({ token, ip: req.ip, device: req.headers["user-agent"] });
-  await user.save();
-  return res.status(201).json({ token, user });
 };
 
 const requestOtp = async (req, res) => {
