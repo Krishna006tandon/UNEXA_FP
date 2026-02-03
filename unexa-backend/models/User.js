@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     username: { type: String, required: true, unique: true, lowercase: true, index: true },
     email: { type: String, required: true, unique: true, lowercase: true, index: true },
-    // phone: { type: String, unique: true, sparse: true },
+    // phone: { type: String, sparse: true, default: null },
     password: { type: String, required: true },
     bio: { type: String, default: "" },
     avatar: { type: String, default: "" },
