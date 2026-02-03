@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { authAPI } from '../utils/api';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -9,6 +10,34 @@ interface LoginScreenProps {
 export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    // Basic validation
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await authAPI.login({ email, password });
+      
+      // Store token (you might want to use AsyncStorage)
+      if (response.token) {
+        // TODO: Store token securely
+        console.log('Login successful:', response);
+        onLogin();
+      } else {
+        Alert.alert('Error', 'Login failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Error', error.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -47,8 +76,14 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
           <Text style={styles.forgotText}>Forgot password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.loginButton} onPress={onLogin}>
-          <Text style={styles.loginButtonText}>Login</Text>
+        <TouchableOpacity 
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          <Text style={styles.loginButtonText}>
+            {loading ? 'Logging in...' : 'Login'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -137,6 +172,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 30,
     elevation: 8,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#176B8780',
+    shadowOpacity: 0.2,
+    elevation: 4,
   },
   loginButtonText: {
     color: '#DAFFFB',

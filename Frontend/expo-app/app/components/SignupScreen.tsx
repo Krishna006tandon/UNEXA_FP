@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { authAPI } from '../utils/api';
 
 interface SignupScreenProps {
   onSignup: () => void;
@@ -12,6 +13,44 @@ export function SignupScreen({ onSignup, onLogin }: SignupScreenProps) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    // Basic validation
+    if (!name || !username || !email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await authAPI.signup({ 
+        name, 
+        username, 
+        email, 
+        password 
+      });
+      
+      // Store token (you might want to use AsyncStorage)
+      if (response.token) {
+        // TODO: Store token securely
+        console.log('Signup successful:', response);
+        onSignup();
+      } else {
+        Alert.alert('Error', 'Signup failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      Alert.alert('Error', error.message || 'Signup failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -80,14 +119,20 @@ export function SignupScreen({ onSignup, onLogin }: SignupScreenProps) {
             />
           </View>
 
-          <TouchableOpacity style={styles.signupButton} onPress={onSignup}>
+          <TouchableOpacity 
+            style={[styles.signupButton, loading && styles.signupButtonDisabled]} 
+            onPress={handleSignup}
+            disabled={loading}
+          >
             <LinearGradient
               colors={['#176B87', '#64CCC5']}
               style={styles.signupButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.signupButtonText}>Continue</Text>
+              <Text style={styles.signupButtonText}>
+                {loading ? 'Creating account...' : 'Continue'}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -207,6 +252,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 30,
     elevation: 8,
+  },
+  signupButtonDisabled: {
+    shadowOpacity: 0.2,
+    elevation: 4,
   },
   signupButtonGradient: {
     paddingVertical: 16,
