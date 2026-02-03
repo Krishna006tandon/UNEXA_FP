@@ -4,12 +4,22 @@ const { generateToken } = require("../utils/generateToken");
 
 const signup = async (req, res) => {
   const { name, username, email, phone, password } = req.body;
-  const exists = await User.findOne({ $or: [{ email }, { phone }, { username }] });
+  
+  // Make phone optional for frontend compatibility
+  const searchQuery = phone ? 
+    { $or: [{ email }, { phone }, { username }] } : 
+    { $or: [{ email }, { username }] };
+    
+  const exists = await User.findOne(searchQuery);
   if (exists) {
     return res.status(400).json({ message: "User already exists" });
   }
+  
   const hashed = password ? await bcrypt.hash(password, 10) : undefined;
-  const user = await User.create({ name, username, email, phone, password: hashed });
+  const userData = { name, username, email, password: hashed };
+  if (phone) userData.phone = phone;
+  
+  const user = await User.create(userData);
   const token = generateToken({ id: user._id });
   user.sessions.push({ token, ip: req.ip, device: req.headers["user-agent"] });
   await user.save();
