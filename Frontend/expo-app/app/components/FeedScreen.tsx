@@ -3,46 +3,9 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Animated }
 import { LinearGradient } from 'expo-linear-gradient';
 
 export function FeedScreen() {
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      username: "alex_m",
-      timeAgo: "2h ago",
-      caption: "Sunset views hitting different ✨",
-      likes: 1234,
-      comments: 89,
-      isLiked: false,
-      isSaved: false,
-    },
-    {
-      id: 2,
-      username: "sarah_k",
-      timeAgo: "5h ago",
-      caption: "New project launch! So excited 🚀",
-      likes: 2567,
-      comments: 156,
-      isLiked: true,
-      isSaved: false,
-    },
-    {
-      id: 3,
-      username: "mike_r",
-      timeAgo: "8h ago",
-      caption: "Coffee and code vibes ☕💻",
-      likes: 892,
-      comments: 45,
-      isLiked: false,
-      isSaved: true,
-    },
-  ]);
+  const [posts, setPosts] = useState([]);
 
-  const stories = [
-    { id: 1, username: "alex_m", hasNew: true },
-    { id: 2, username: "sarah_k", hasNew: true },
-    { id: 3, username: "mike_r", hasNew: false },
-    { id: 4, username: "emma_w", hasNew: true },
-    { id: 5, username: "john_d", hasNew: false },
-  ];
+  const stories = [];
 
   const [likeAnimations, setLikeAnimations] = useState<{[key: number]: Animated.Value}>({});
 

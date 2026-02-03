@@ -5,11 +5,16 @@ const { Video } = require("../models/Video");
 const Fuse = require("fuse.js");
 
 const getProfile = async (req, res) => {
-  const user = await User.findById(req.params.id).select("-password");
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
+  try {
+    const userId = req.params.id || req.user._id;
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-  res.json(user);
 };
 
 const followUser = async (req, res) => {
@@ -47,11 +52,34 @@ const getUserVideos = async (req, res) => {
 };
 
 const searchUsers = async (req, res) => {
-  const query = req.query.q || "";
-  const users = await User.find().select("username name avatar");
-  const fuse = new Fuse(users, { keys: ["username", "name"], threshold: 0.4 });
-  const results = fuse.search(query).map((item) => item.item);
-  res.json(results);
+  try {
+    const query = req.query.q || "";
+    const users = await User.find().select("username name avatar");
+    const fuse = new Fuse(users, { keys: ["username", "name"], threshold: 0.4 });
+    const results = fuse.search(query).map((item) => item.item);
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 
-module.exports = { getProfile, followUser, getUserPosts, getUserStories, getUserVideos, searchUsers };
+const getUserStats = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const [postsCount, followersCount, followingCount] = await Promise.all([
+      Post.countDocuments({ author: userId }),
+      User.findById(userId).then(user => user ? user.followers.length : 0),
+      User.findById(userId).then(user => user ? user.following.length : 0)
+    ]);
+    
+    res.json({
+      posts: postsCount,
+      followers: followersCount,
+      following: followingCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports = { getProfile, followUser, getUserPosts, getUserStories, getUserVideos, searchUsers, getUserStats };

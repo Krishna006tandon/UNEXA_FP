@@ -8,56 +8,7 @@ interface ChatListScreenProps {
 export function ChatListScreen({ onChatSelect }: ChatListScreenProps) {
   const [searchQuery, setSearchQuery] = useState("");
   
-  const chats = [
-    {
-      id: 1,
-      username: "alex_m",
-      lastMessage: "Hey! Did you see that new feature?",
-      time: "2m",
-      unread: 3,
-      online: true,
-    },
-    {
-      id: 2,
-      username: "sarah_k",
-      lastMessage: "Thanks for the help!",
-      time: "15m",
-      unread: 0,
-      online: true,
-    },
-    {
-      id: 3,
-      username: "mike_r",
-      lastMessage: "Let's catch up tomorrow",
-      time: "1h",
-      unread: 1,
-      online: false,
-    },
-    {
-      id: 4,
-      username: "emma_w",
-      lastMessage: "Great meeting today! 🎉",
-      time: "2h",
-      unread: 0,
-      online: true,
-    },
-    {
-      id: 5,
-      username: "john_d",
-      lastMessage: "Can you send me the files?",
-      time: "3h",
-      unread: 2,
-      online: false,
-    },
-    {
-      id: 6,
-      username: "lisa_t",
-      lastMessage: "See you at the event!",
-      time: "5h",
-      unread: 0,
-      online: true,
-    },
-  ];
+  const chats = [];
 
   const filteredChats = chats.filter(chat =>
     chat.username.toLowerCase().includes(searchQuery.toLowerCase())
