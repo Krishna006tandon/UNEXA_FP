@@ -140,6 +140,20 @@ export const authAPI = {
       
       return response;
     } catch (error) {
+      console.log('Server login failed, trying offline fallback...');
+      
+      // If server is down, try to use cached login data
+      try {
+        const cachedResponse = await AsyncStorage.getItem('lastLoginResponse');
+        if (cachedResponse) {
+          const loginData = JSON.parse(cachedResponse);
+          console.log('Using cached login data');
+          return loginData;
+        }
+      } catch (e) {
+        console.log('No cached data available');
+      }
+      
       throw error;
     }
   },

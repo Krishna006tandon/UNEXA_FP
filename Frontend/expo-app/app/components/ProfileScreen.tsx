@@ -122,10 +122,7 @@ export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
     { id: "tagged", icon: "", label: "Tagged" },
   ];
 
-  const posts = userPosts.map(post => ({
-    id: post.id,
-    type: activeTab,
-  }));
+  const posts = userPosts || [];
 
   const handleFollowPress = () => {
     Animated.sequence([
@@ -258,10 +255,10 @@ export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
 
       {/* Posts Grid */}
       <View style={styles.postsGrid}>
-        {posts.map(post => (
-          <View key={post.id} style={styles.postItem}>
+        {posts && posts.map(post => (
+          <View key={post.id || Math.random()} style={styles.postItem}>
             <Image 
-              source={{ uri: `https://picsum.photos/150/150?random=${post.id}` }}
+              source={{ uri: `https://picsum.photos/150/150?random=${post.id || Math.random()}` }}
               style={styles.postImage}
               resizeMode="cover"
             />
