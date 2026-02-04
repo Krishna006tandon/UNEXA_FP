@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
 import { PlaceholderScreen } from "./components/PlaceholderScreen";
 import { OnboardingScreen1 } from "./components/OnboardingScreen1";
@@ -11,12 +11,14 @@ import { ChatListScreen } from "./components/ChatListScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
 import { BottomNav } from "./components/BottomNav";
 import { SnapCameraScreen } from "./components/SnapCameraScreen";
-import { StreamFeedScreen } from "./components/StreamFeedScreen";
-import { ChatWindow } from "./components/ChatWindow";
-import { VideoPlayerScreen } from "./components/VideoPlayerScreen";
 import { SnapsScreen } from "./components/SnapsScreen";
 import { SnapEditScreen } from "./components/SnapEditScreen";
 import { SnapViewerScreen } from "./components/SnapViewerScreen";
+import { StreamFeedScreen } from "./components/StreamFeedScreen";
+import { VideoPlayerScreen } from "./components/VideoPlayerScreen";
+import { ChatWindow } from "./components/ChatWindow";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { saveAuthToken } from "./utils/api";
 
 type Screen =
   | "onboarding1"
@@ -43,6 +45,36 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("feed");
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check authentication on app startup
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        
+        if (token) {
+          // User is logged in, go to feed
+          setCurrentScreen("feed");
+          setActiveTab("feed");
+        } else if (hasSeenOnboarding === 'true') {
+          // User has seen onboarding but not logged in
+          setCurrentScreen("login");
+        } else {
+          // First time user, show onboarding
+          setCurrentScreen("onboarding1");
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+        setCurrentScreen("onboarding1");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
 
   // Check if we should show bottom nav
   const showBottomNav = ["feed", "chats", "snaps", "stream", "profile"].includes(
@@ -73,9 +105,23 @@ export default function App() {
       case "onboarding1":
         return <OnboardingScreen1 onNext={() => setCurrentScreen("onboarding2")} />;
       case "onboarding2":
-        return <OnboardingScreen2 onNext={() => setCurrentScreen("onboarding3")} />;
+        return (
+          <OnboardingScreen2 
+            onNext={async () => {
+              await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+              setCurrentScreen("onboarding3");
+            }} 
+          />
+        );
       case "onboarding3":
-        return <OnboardingScreen3 onGetStarted={() => setCurrentScreen("login")} />;
+        return (
+          <OnboardingScreen3 
+            onGetStarted={async () => {
+              await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+              setCurrentScreen("login");
+            }} 
+          />
+        );
       case "login":
         return (
           <LoginScreen
