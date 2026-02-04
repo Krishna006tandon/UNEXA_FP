@@ -77,7 +77,7 @@ export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
 
   const loadUserPosts = async () => {
     try {
-      const postsData = await userAPI.getUserPosts(userProfile.id);
+      const postsData = await userAPI.getUserPosts(userProfile._id);
       setUserPosts(postsData);
     } catch (error) {
       // Silent fallback - set empty posts when API fails
@@ -87,7 +87,7 @@ export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
 
   const loadUserStats = async () => {
     try {
-      const statsData = await userAPI.getUserStats(userProfile.id);
+      const statsData = await userAPI.getUserStats(userProfile._id);
       setUserStats(statsData);
     } catch (error) {
       // Silent fallback - set default stats when API fails

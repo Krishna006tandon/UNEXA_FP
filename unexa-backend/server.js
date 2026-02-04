@@ -24,7 +24,7 @@ const io = require("socket.io")(server, {
   },
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 app.set("BASE_URL", BASE_URL);
 

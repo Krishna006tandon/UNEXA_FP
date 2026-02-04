@@ -14,8 +14,8 @@ const router = express.Router();
 
 router.get("/search", protect, searchUsers);
 router.get("/profile", protect, getProfile);
-router.get("/:id", protect, getProfile);
 router.post("/:id/follow", protect, followUser);
+router.get("/:id", protect, getProfile);
 router.get("/:id/posts", protect, getUserPosts);
 router.get("/:id/stories", protect, getUserStories);
 router.get("/:id/videos", protect, getUserVideos);
