@@ -9,27 +9,11 @@ interface SnapsScreenProps {
 export function SnapsScreen({ onSnapSelect, onCamera }: SnapsScreenProps) {
   const [activeTab, setActiveTab] = useState('friends');
   
-  const friendSnaps = [
-    { id: 1, username: "alex_m", hasStory: true, viewed: false, time: "2m" },
-    { id: 2, username: "sarah_k", hasStory: true, viewed: false, time: "15m" },
-    { id: 3, username: "mike_r", hasStory: true, viewed: true, time: "1h" },
-    { id: 4, username: "emma_w", hasStory: true, viewed: false, time: "3h" },
-    { id: 5, username: "john_d", hasStory: true, viewed: true, time: "5h" },
-    { id: 6, username: "lisa_t", hasStory: false, viewed: false, time: "" },
-  ];
+  const friendSnaps = [];
 
-  const discoverSnaps = [
-    { id: 7, username: "tech_news", hasStory: true, viewed: false, subscribers: "1.2M" },
-    { id: 8, username: "foodie", hasStory: true, viewed: false, subscribers: "890K" },
-    { id: 9, username: "travel_vibes", hasStory: true, viewed: true, subscribers: "2.1M" },
-    { id: 10, username: "fitness_guru", hasStory: true, viewed: false, subscribers: "650K" },
-  ];
+  const discoverSnaps = [];
 
-  const spotlightSnaps = [
-    { id: 11, title: "Amazing Sunset Views", creator: "nature_lover", views: "45K", likes: "2.1K" },
-    { id: 12, title: "Street Food Tour", creator: "food_adventures", views: "32K", likes: "1.8K" },
-    { id: 13, title: "City Lights at Night", creator: "urban_explorer", views: "28K", likes: "1.5K" },
-  ];
+  const spotlightSnaps = [];
 
   const renderSnapsList = (snaps: any[], isDiscover: boolean = false) => (
     <ScrollView style={styles.snapsList} showsVerticalScrollIndicator={false}>

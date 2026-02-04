@@ -10,14 +10,7 @@ export function SnapEditScreen({ onSend, onCancel }: SnapEditScreenProps) {
   const [showFriendsList, setShowFriendsList] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
 
-  const friends = [
-    { id: 1, username: "alex_m" },
-    { id: 2, username: "sarah_k" },
-    { id: 3, username: "mike_r" },
-    { id: 4, username: "emma_w" },
-    { id: 5, username: "john_d" },
-    { id: 6, username: "lisa_t" },
-  ];
+  const friends = [];
 
   const toggleFriend = (friendId: number) => {
     setSelectedFriends(prev => 

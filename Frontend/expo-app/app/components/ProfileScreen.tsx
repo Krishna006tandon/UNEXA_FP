@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { userAPI } from '../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ProfileScreenProps {
   onOpenSettings: () => void;
@@ -9,18 +11,118 @@ interface ProfileScreenProps {
 export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
   const [activeTab, setActiveTab] = useState("posts");
   const [followAnimation] = useState(new Animated.Value(1));
+  const [userProfile, setUserProfile] = useState(null);
+  const [userPosts, setUserPosts] = useState([]);
+  const [userStats, setUserStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  useEffect(() => {
+    if (userProfile) {
+      loadUserPosts();
+      loadUserStats();
+    }
+  }, [userProfile, activeTab]);
+
+  const loadUserProfile = async () => {
+    try {
+      setLoading(true);
+      console.log('Loading user profile...');
+      const profileData = await userAPI.getProfile();
+      console.log('Profile data received:', profileData);
+      setUserProfile(profileData);
+    } catch (error) {
+      // Silent fallback - try to get user data from login
+      try {
+        const loginResponse = await AsyncStorage.getItem('lastLoginResponse');
+        if (loginResponse) {
+          const loginData = JSON.parse(loginResponse);
+          setUserProfile({
+            id: loginData.user._id,
+            name: loginData.user.name,
+            username: loginData.user.username,
+            bio: loginData.user.bio || 'No bio yet',
+            avatar: loginData.user.avatar
+          });
+          setUserStats({
+            posts: loginData.user.savedPosts?.length || 0,
+            followers: loginData.user.followers?.length || 0,
+            following: loginData.user.following?.length || 0
+          });
+        } else {
+          throw new Error('No login data found');
+        }
+      } catch (e) {
+        // Final fallback to guest profile
+        setUserProfile({
+          id: 1,
+          name: 'Guest User',
+          username: 'guest_user',
+          bio: 'Welcome to UNEXA! Please log in to see your profile.',
+          avatar: null
+        });
+        setUserStats({
+          posts: 0,
+          followers: 0,
+          following: 0
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserPosts = async () => {
+    try {
+      const postsData = await userAPI.getUserPosts(userProfile._id);
+      setUserPosts(postsData);
+    } catch (error) {
+      // Silent fallback - set empty posts when API fails
+      setUserPosts([]);
+    }
+  };
+
+  const loadUserStats = async () => {
+    try {
+      const statsData = await userAPI.getUserStats(userProfile._id);
+      setUserStats(statsData);
+    } catch (error) {
+      // Silent fallback - set default stats when API fails
+      setUserStats({
+        posts: 0,
+        followers: 0,
+        following: 0
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (!userProfile) {
+    return (
+      <View style={styles.container}>
+        <Text>No user profile found.</Text>
+      </View>
+    );
+  }
 
   const tabs = [
-    { id: "posts", icon: "⚏", label: "Posts" },
-    { id: "snaps", icon: "⚡", label: "Snaps" },
-    { id: "videos", icon: "▶️", label: "Videos" },
-    { id: "tagged", icon: "🏷️", label: "Tagged" },
+    { id: "posts", icon: "", label: "Posts" },
+    { id: "snaps", icon: "", label: "Snaps" },
+    { id: "videos", icon: "", label: "Videos" },
+    { id: "tagged", icon: "", label: "Tagged" },
   ];
 
-  const posts = Array.from({ length: 9 }, (_, i) => ({
-    id: i + 1,
-    type: activeTab,
-  }));
+  const posts = userPosts || [];
 
   const handleFollowPress = () => {
     Animated.sequence([
@@ -62,7 +164,7 @@ export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.avatarText}>JD</Text>
+              <Text style={styles.avatarText}>{userProfile?.name?.charAt(0)?.toUpperCase() || 'U'}</Text>
             </LinearGradient>
             <TouchableOpacity style={styles.editAvatar}>
               <LinearGradient
@@ -78,25 +180,25 @@ export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
           
           <View style={styles.stats}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>142</Text>
+              <Text style={styles.statNumber}>{userStats?.posts || 0}</Text>
               <Text style={styles.statLabel}>Posts</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>2.8K</Text>
+              <Text style={styles.statNumber}>{userStats?.followers || 0}</Text>
               <Text style={styles.statLabel}>Followers</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>891</Text>
+              <Text style={styles.statNumber}>{userStats?.following || 0}</Text>
               <Text style={styles.statLabel}>Following</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.userInfo}>
-          <Text style={styles.displayName}>John Doe</Text>
-          <Text style={styles.username}>@john_doe</Text>
+          <Text style={styles.displayName}>{userProfile?.name || 'Loading...'}</Text>
+          <Text style={styles.username}>@{userProfile?.username || 'loading'}</Text>
           <Text style={styles.bio}>
-            Creative developer | Coffee enthusiast ☕ | Building cool stuff 🚀
+            {userProfile?.bio || 'No bio yet'}
           </Text>
         </View>
 
@@ -153,10 +255,10 @@ export function ProfileScreen({ onOpenSettings }: ProfileScreenProps) {
 
       {/* Posts Grid */}
       <View style={styles.postsGrid}>
-        {posts.map(post => (
-          <View key={post.id} style={styles.postItem}>
+        {posts && posts.map(post => (
+          <View key={post.id || Math.random()} style={styles.postItem}>
             <Image 
-              source={{ uri: `https://picsum.photos/150/150?random=${post.id}` }}
+              source={{ uri: `https://picsum.photos/150/150?random=${post.id || Math.random()}` }}
               style={styles.postImage}
               resizeMode="cover"
             />

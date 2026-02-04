@@ -8,23 +8,11 @@ interface StreamFeedScreenProps {
 export function StreamFeedScreen({ onVideoSelect }: StreamFeedScreenProps) {
   const [searchQuery, setSearchQuery] = useState("");
   
-  const trendingVideos = [
-    { id: 1, title: "Amazing Tech Review 2024", channel: "TechGuru", views: "1.2M" },
-    { id: 2, title: "How to Build Apps Fast", channel: "DevDaily", views: "850K" },
-    { id: 3, title: "Travel Vlog: Tokyo", channel: "Wanderlust", views: "2.1M" },
-  ];
+  const trendingVideos = [];
 
-  const shortVideos = [
-    { id: 4, title: "Quick Tutorial", channel: "LearnFast", views: "500K" },
-    { id: 5, title: "Funny Moments", channel: "Laughs", views: "1.5M" },
-    { id: 6, title: "Life Hacks", channel: "DailyTips", views: "900K" },
-  ];
+  const shortVideos = [];
 
-  const longVideos = [
-    { id: 7, title: "Complete Guide to React", channel: "CodeMaster", views: "3.2M", duration: "45:32" },
-    { id: 8, title: "Photography Masterclass", channel: "PhotoPro", views: "1.8M", duration: "1:12:45" },
-    { id: 9, title: "Music Production Tips", channel: "BeatMaker", views: "650K", duration: "28:15" },
-  ];
+  const longVideos = [];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
