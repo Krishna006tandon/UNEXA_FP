@@ -1,5 +1,5 @@
 import { X, Upload, Film, FileVideo } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 interface VideoUploadModalProps {

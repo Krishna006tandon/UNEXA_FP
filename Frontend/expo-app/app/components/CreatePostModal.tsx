@@ -1,5 +1,5 @@
 import { X, Image, Smile, MapPin, Tag } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 interface CreatePostModalProps {

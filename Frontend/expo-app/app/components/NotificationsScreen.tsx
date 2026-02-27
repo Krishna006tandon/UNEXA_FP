@@ -1,5 +1,5 @@
 import { Heart, MessageCircle, UserPlus, AtSign } from "lucide-react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 
 export function NotificationsScreen() {
   const notifications = [
