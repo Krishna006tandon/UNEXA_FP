@@ -9,6 +9,7 @@ import { SignupScreen } from "./components/SignupScreen";
 import { FeedScreen } from "./components/FeedScreen";
 import { ChatListScreen } from "./components/ChatListScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
+import { SettingsScreen } from "./components/SettingsScreen";
 import { BottomNav } from "./components/BottomNav";
 import { SnapCameraScreen } from "./components/SnapCameraScreen";
 import { SnapsScreen } from "./components/SnapsScreen";
@@ -193,7 +194,15 @@ export default function App() {
       case "notifications":
         return <PlaceholderScreen title="Notifications Screen" />;
       case "settings":
-        return <PlaceholderScreen title="Settings Screen" />;
+        return (
+          <SettingsScreen 
+            onBack={() => setCurrentScreen("profile")}
+            onLogout={() => {
+              setCurrentScreen("login");
+              setActiveTab("login");
+            }}
+          />
+        );
       default:
         return <PlaceholderScreen title="Feed Screen" />;
     }

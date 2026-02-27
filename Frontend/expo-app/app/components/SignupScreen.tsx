@@ -36,14 +36,9 @@ export function SignupScreen({ onSignup, onLogin }: SignupScreenProps) {
         password 
       });
       
-      // Store token (you might want to use AsyncStorage)
-      if (response.token) {
-        // TODO: Store token securely
-        console.log('Signup successful:', response);
-        onSignup();
-      } else {
-        Alert.alert('Error', 'Signup failed. Please try again.');
-      }
+      // Token is automatically stored by authAPI.signup
+      console.log('Signup successful:', response);
+      onSignup();
     } catch (error) {
       console.error('Signup error:', error);
       Alert.alert('Error', error.message || 'Signup failed. Please try again.');

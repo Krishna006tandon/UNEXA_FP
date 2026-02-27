@@ -23,14 +23,9 @@ export function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
     try {
       const response = await authAPI.login({ email, password });
       
-      // Store token (you might want to use AsyncStorage)
-      if (response.token) {
-        // TODO: Store token securely
-        console.log('Login successful:', response);
-        onLogin();
-      } else {
-        Alert.alert('Error', 'Login failed. Please try again.');
-      }
+      // Token is automatically stored by authAPI.login
+      console.log('Login successful:', response);
+      onLogin();
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Error', error.message || 'Login failed. Please check your credentials.');

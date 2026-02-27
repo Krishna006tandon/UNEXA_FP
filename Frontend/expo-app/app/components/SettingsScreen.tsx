@@ -1,110 +1,210 @@
-import {
-  ChevronRight,
-  User,
-  Lock,
-  Bell,
-  Info,
-  HelpCircle,
-  LogOut,
-  Shield,
-  Eye,
-  Globe,
-} from "lucide-react";
-import { motion } from "motion/react";
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { authAPI } from '../utils/api';
 
 interface SettingsScreenProps {
   onBack: () => void;
+  onLogout: () => void;
 }
 
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
   const settingsGroups = [
     {
       title: "Account",
       items: [
-        { icon: User, label: "Profile Settings", color: "#64CCC5" },
-        { icon: Lock, label: "Password & Security", color: "#176B87" },
-        { icon: Eye, label: "Privacy Settings", color: "#64CCC5" },
+        { label: "Profile Settings", icon: "👤" },
+        { label: "Password & Security", icon: "🔒" },
+        { label: "Privacy Settings", icon: "👁️" },
       ],
     },
     {
       title: "Preferences",
       items: [
-        { icon: Bell, label: "Notifications", color: "#176B87" },
-        { icon: Globe, label: "Language & Region", color: "#64CCC5" },
-        { icon: Shield, label: "Data & Storage", color: "#176B87" },
+        { label: "Notifications", icon: "🔔" },
+        { label: "Language & Region", icon: "🌍" },
+        { label: "Data & Storage", icon: "🛡️" },
       ],
     },
     {
       title: "Support",
       items: [
-        { icon: HelpCircle, label: "Help Center", color: "#64CCC5" },
-        { icon: Info, label: "About UNEXA", color: "#176B87" },
+        { label: "Help Center", icon: "❓" },
+        { label: "About UNEXA", icon: "ℹ️" },
       ],
     },
   ];
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authAPI.logout();
+              onLogout();
+            } catch (error) {
+              console.error('Logout error:', error);
+              // Still navigate to login even if API call fails
+              onLogout();
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <div className="h-screen bg-[#001C30] flex flex-col pb-20">
+    <View style={styles.container}>
       {/* Header */}
-      <div className="px-6 py-4 flex items-center gap-4 bg-[#001C30] border-b border-[#176B87]/20 sticky top-0 z-10">
-        <button
-          onClick={onBack}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#176B87]/20 transition-colors"
-        >
-          <ChevronRight className="w-6 h-6 text-[#64CCC5] rotate-180" />
-        </button>
-        <div className="text-[#DAFFFB] text-xl font-semibold">Settings</div>
-      </div>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Settings</Text>
+      </View>
 
       {/* Settings List */}
-      <div className="flex-1 overflow-y-auto">
+      <View style={styles.content}>
         {settingsGroups.map((group, groupIndex) => (
-          <div key={groupIndex} className="mb-6">
-            <div className="px-6 py-3 text-[#64CCC5] text-sm font-semibold">
-              {group.title}
-            </div>
-            <div className="bg-[#002843]/50">
-              {group.items.map((item, itemIndex) => {
-                const Icon = item.icon;
-
-                return (
-                  <motion.button
-                    key={itemIndex}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: (groupIndex * 3 + itemIndex) * 0.05 }}
-                    className="w-full px-6 py-4 flex items-center gap-4 border-b border-[#176B87]/10 hover:bg-[#176B87]/10 transition-colors"
-                  >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ backgroundColor: `${item.color}20` }}
-                    >
-                      <Icon className="w-5 h-5" style={{ color: item.color }} />
-                    </div>
-                    <div className="flex-1 text-left text-[#DAFFFB]">
-                      {item.label}
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-[#64CCC5]/50" />
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
+          <View key={groupIndex} style={styles.groupContainer}>
+            <Text style={styles.groupTitle}>{group.title}</Text>
+            <View style={styles.groupItems}>
+              {group.items.map((item, itemIndex) => (
+                <TouchableOpacity
+                  key={itemIndex}
+                  style={styles.settingItem}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.itemIcon}>{item.icon}</Text>
+                  <Text style={styles.itemLabel}>{item.label}</Text>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         ))}
 
         {/* Logout Button */}
-        <div className="px-6 py-4">
-          <button className="w-full bg-[#FF4D6A]/20 hover:bg-[#FF4D6A]/30 text-[#FF4D6A] py-4 rounded-2xl flex items-center justify-center gap-3 transition-colors">
-            <LogOut className="w-5 h-5" />
-            <span className="font-semibold">Log Out</span>
-          </button>
-        </div>
+        <View style={styles.logoutContainer}>
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.logoutIcon}>🚪</Text>
+            <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Version */}
-        <div className="px-6 py-4 text-center text-[#64CCC5]/50 text-sm">
-          UNEXA v1.0.0
-        </div>
-      </div>
-    </div>
+        <Text style={styles.versionText}>UNEXA v1.0.0</Text>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#001C30',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#176B8740',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 12,
+  },
+  backIcon: {
+    fontSize: 24,
+    color: '#64CCC5',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#DAFFFB',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  groupContainer: {
+    marginBottom: 24,
+  },
+  groupTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64CCC5',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  groupItems: {
+    backgroundColor: '#00284380',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#176B8720',
+  },
+  itemIcon: {
+    fontSize: 20,
+    marginRight: 16,
+    width: 24,
+    textAlign: 'center',
+  },
+  itemLabel: {
+    flex: 1,
+    fontSize: 16,
+    color: '#DAFFFB',
+  },
+  chevron: {
+    fontSize: 20,
+    color: '#64CCC580',
+  },
+  logoutContainer: {
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF4D6A20',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  logoutIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF4D6A',
+  },
+  versionText: {
+    textAlign: 'center',
+    color: '#64CCC580',
+    fontSize: 14,
+  },
+});
