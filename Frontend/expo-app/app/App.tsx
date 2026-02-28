@@ -18,8 +18,10 @@ import { SnapViewerScreen } from "./components/SnapViewerScreen";
 import { StreamFeedScreen } from "./components/StreamFeedScreen";
 import { VideoPlayerScreen } from "./components/VideoPlayerScreen";
 import { ChatWindow } from "./components/ChatWindow";
+import { UserSearchScreen } from "./components/UserSearchScreen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { saveAuthToken } from "./utils/api";
+
 
 type Screen =
   | "onboarding1"
@@ -30,6 +32,7 @@ type Screen =
   | "feed"
   | "chats"
   | "chat-window"
+  | "user-search"
   | "snaps"
   | "snap-camera"
   | "snap-edit"
@@ -47,6 +50,8 @@ export default function App() {
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isVideoUploadOpen, setIsVideoUploadOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedChat, setSelectedChat] = useState<any>(null);
 
   // Check authentication on app startup
   useEffect(() => {
@@ -148,7 +153,23 @@ export default function App() {
       case "chats":
         return (
           <ChatListScreen
-            onChatSelect={() => setCurrentScreen("chat-window")}
+            onChatSelect={(chat) => {
+              setSelectedChat(chat);
+              setCurrentScreen("chat-window");
+            }}
+            onNewChat={() => setCurrentScreen("user-search")}
+          />
+        );
+      case "user-search":
+        return (
+          <UserSearchScreen
+            onUserSelect={(user) => {
+              // Store the selected user
+              setSelectedUser(user);
+              // Navigate to chat window
+              setCurrentScreen("chat-window");
+            }}
+            onBack={() => setCurrentScreen("chats")}
           />
         );
       case "chat-window":

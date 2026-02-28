@@ -7,12 +7,14 @@ const {
   getUserVideos,
   searchUsers,
   getUserStats,
+  getAllUsers,
 } = require("../controllers/userController");
 const { protect } = require("../utils/authMiddleware");
 
 const router = express.Router();
 
 router.get("/search", protect, searchUsers);
+router.get("/all", protect, getAllUsers);
 router.get("/profile", protect, getProfile);
 router.post("/:id/follow", protect, followUser);
 router.get("/:id", protect, getProfile);

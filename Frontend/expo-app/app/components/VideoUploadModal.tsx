@@ -1,4 +1,4 @@
-import { X, Upload, Film, FileVideo } from "lucide-react";
+import { X, Upload, Film, Video } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
@@ -70,7 +70,7 @@ export function VideoUploadModal({ isOpen, onClose }: VideoUploadModalProps) {
                       key={i}
                       className="aspect-video rounded-xl border-2 border-[#176B87]/30 bg-[#176B87]/5 flex items-center justify-center hover:border-[#64CCC5] transition-colors cursor-pointer"
                     >
-                      <FileVideo className="w-6 h-6 text-[#64CCC5]/50" />
+                      <Video className="w-6 h-6 text-[#64CCC5]/50" />
                     </div>
                   ))}
                 </div>

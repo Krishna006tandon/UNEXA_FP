@@ -14,6 +14,7 @@ const { notificationRoutes } = require("./routes/notificationRoutes");
 const { userRoutes } = require("./routes/userRoutes");
 const { registerChatSockets } = require("./sockets/chatSocket");
 const { scheduleStoryExpiry } = require("./cron/storyExpiry");
+const testRoutes = require("./routes/testRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -28,7 +29,10 @@ const PORT = process.env.PORT || 10000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 app.set("BASE_URL", BASE_URL);
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:8081', 'http://192.168.29.104:8081', 'exp://192.168.29.104:8081'],
+  credentials: true
+}));
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
@@ -49,6 +53,7 @@ app.use("/api/stories", storyRoutes);
 app.use("/api/videos", videoRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/test", testRoutes);
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`UNEXA backend listening on ${PORT}`);

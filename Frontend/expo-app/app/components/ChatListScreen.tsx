@@ -2,13 +2,55 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 
 interface ChatListScreenProps {
-  onChatSelect: (chatId: number) => void;
+  onChatSelect: (chat: any) => void;
+  onNewChat: () => void;
 }
 
-export function ChatListScreen({ onChatSelect }: ChatListScreenProps) {
+export function ChatListScreen({ onChatSelect, onNewChat }: ChatListScreenProps) {
   const [searchQuery, setSearchQuery] = useState("");
   
-  const chats = [];
+  const chats = [
+    {
+      id: "1",
+      username: "alex_m",
+      time: "10:30 AM",
+      lastMessage: "Hey! How are you?",
+      online: true,
+      unread: 0
+    },
+    {
+      id: "2",
+      username: "sarahj",
+      time: "9:45 AM",
+      lastMessage: "Can't wait to see it! 🚀",
+      online: true,
+      unread: 2
+    },
+    {
+      id: "3",
+      username: "mikec",
+      time: "Yesterday",
+      lastMessage: "Thanks for the update!",
+      online: false,
+      unread: 0
+    },
+    {
+      id: "4",
+      username: "emmaw",
+      time: "Wed",
+      lastMessage: "Check out my new post!",
+      online: true,
+      unread: 1
+    },
+    {
+      id: "5",
+      username: "davidb",
+      time: "Mon",
+      lastMessage: "Meeting tomorrow at 10am",
+      online: false,
+      unread: 0
+    }
+  ];
 
   const filteredChats = chats.filter(chat =>
     chat.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -19,9 +61,17 @@ export function ChatListScreen({ onChatSelect }: ChatListScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Chats</Text>
-        <TouchableOpacity style={styles.editButton}>
-          <Text style={styles.editIcon}>✏️</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.newChatButton}
+            onPress={onNewChat}
+          >
+            <Text style={styles.newChatIcon}>💬</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.editButton}>
+            <Text style={styles.editIcon}>✏️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -42,7 +92,7 @@ export function ChatListScreen({ onChatSelect }: ChatListScreenProps) {
           <TouchableOpacity
             key={chat.id}
             style={styles.chatItem}
-            onPress={() => onChatSelect(chat.id)}
+            onPress={() => onChatSelect(chat)}
           >
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
@@ -89,6 +139,23 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#176B8733',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  newChatButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#64CCC5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newChatIcon: {
+    fontSize: 18,
+    color: '#001C30',
+    fontWeight: 'bold',
   },
   headerTitle: {
     fontSize: 24,

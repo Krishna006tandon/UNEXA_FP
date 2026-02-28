@@ -51,6 +51,18 @@ const getUserVideos = async (req, res) => {
   res.json(videos);
 };
 
+const getAllUsers = async (req, res) => {
+  try {
+    // Get all users except the current user
+    const users = await User.find({ _id: { $ne: req.user._id } })
+      .select("username email avatar")
+      .limit(50); // Limit for performance
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 const searchUsers = async (req, res) => {
   try {
     const query = req.query.q || "";
@@ -82,4 +94,4 @@ const getUserStats = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, followUser, getUserPosts, getUserStories, getUserVideos, searchUsers, getUserStats };
+module.exports = { getProfile, followUser, getUserPosts, getUserStories, getUserVideos, searchUsers, getUserStats, getAllUsers };

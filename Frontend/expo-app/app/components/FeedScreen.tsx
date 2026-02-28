@@ -3,9 +3,61 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Animated }
 import { LinearGradient } from 'expo-linear-gradient';
 
 export function FeedScreen() {
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState([
+    {
+      id: 1,
+      username: "alex_m",
+      timeAgo: "2 hours ago",
+      likes: 128,
+      comments: 12,
+      caption: "Beautiful sunset view from my balcony! #sunset #nature #peaceful",
+      isLiked: false,
+      isSaved: false
+    },
+    {
+      id: 2,
+      username: "sarahj",
+      timeAgo: "4 hours ago",
+      likes: 89,
+      comments: 5,
+      caption: "Just finished my morning workout! Feeling great 💪 #fitness #health",
+      isLiked: true,
+      isSaved: false
+    },
+    {
+      id: 3,
+      username: "mikec",
+      timeAgo: "1 day ago",
+      likes: 204,
+      comments: 23,
+      caption: "Working on a new project. Can't wait to share it with you all! #coding #tech",
+      isLiked: false,
+      isSaved: true
+    }
+  ]);
 
-  const stories = [];
+  const stories = [
+    {
+      id: 1,
+      username: "sarahj",
+      hasNew: true
+    },
+    {
+      id: 2,
+      username: "mikec",
+      hasNew: true
+    },
+    {
+      id: 3,
+      username: "emmaw",
+      hasNew: false
+    },
+    {
+      id: 4,
+      username: "davidb",
+      hasNew: false
+    }
+  ];
 
   const [likeAnimations, setLikeAnimations] = useState<{[key: number]: Animated.Value}>({});
 
@@ -30,19 +82,23 @@ export function FeedScreen() {
       ]).start();
     }
 
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-        : post
-    ));
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+          : post
+      )
+    );
   };
 
   const handleSave = (postId: number) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, isSaved: !post.isSaved }
-        : post
-    ));
+    setPosts(prevPosts => 
+      prevPosts.map(post => 
+        post.id === postId 
+          ? { ...post, isSaved: !post.isSaved }
+          : post
+      )
+    );
   };
 
   return (

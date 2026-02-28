@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface ChatWindowProps {
   onBack: () => void;
@@ -27,41 +28,61 @@ export function ChatWindow({ onBack }: ChatWindowProps) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
+            <Ionicons name="arrow-back" size={24} color="#64CCC5" />
           </TouchableOpacity>
           <View style={styles.userInfo}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>A</Text>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>A</Text>
+              </View>
+              <View style={styles.onlineIndicator} />
             </View>
             <View>
-              <Text style={styles.username}>Alex</Text>
+              <Text style={styles.username}>alex_m</Text>
               <Text style={styles.status}>Online</Text>
             </View>
           </View>
         </View>
-
-        <View style={styles.headerRight}>
+        
+        <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerButton}>
-            <Text style={styles.headerIcon}>📞</Text>
+            <Ionicons name="call" size={20} color="#64CCC5" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
-            <Text style={styles.headerIcon}>📹</Text>
+            <Ionicons name="videocam" size={20} color="#64CCC5" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
-            <Text style={styles.headerIcon}>⋯</Text>
+            <Ionicons name="ellipsis-vertical" size={20} color="#64CCC5" />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Messages */}
-      <ScrollView style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
-        {messages.map(msg => (
-          <View key={msg.id} style={[styles.messageWrapper, msg.sent && styles.sentMessage]}>
-            <View style={[styles.messageBubble, msg.sent && styles.sentBubble]}>
-              <Text style={[styles.messageText, msg.sent && styles.sentText]}>
+      <ScrollView style={styles.messagesContainer} contentContainerStyle={styles.messagesContent}>
+        {messages.map((msg, index) => (
+          <View 
+            key={msg.id} 
+            style={[
+              styles.messageContainer, 
+              msg.sent ? styles.sentMessageContainer : styles.receivedMessageContainer
+            ]}
+          >
+            <View 
+              style={[
+                styles.messageBubble, 
+                msg.sent ? styles.sentBubble : styles.receivedBubble
+              ]}
+            >
+              <Text style={[
+                styles.messageText, 
+                msg.sent ? styles.sentText : styles.receivedText
+              ]}>
                 {msg.text}
               </Text>
-              <Text style={[styles.messageTime, msg.sent && styles.sentTime]}>
+              <Text style={[
+                styles.messageTime, 
+                msg.sent ? styles.sentTime : styles.receivedTime
+              ]}>
                 {msg.time}
               </Text>
             </View>
@@ -69,34 +90,41 @@ export function ChatWindow({ onBack }: ChatWindowProps) {
         ))}
       </ScrollView>
 
-      {/* Input Area */}
+      {/* Input Bar */}
       <View style={styles.inputContainer}>
         <View style={styles.inputRow}>
           <TouchableOpacity style={styles.inputButton}>
-            <Text style={styles.inputIcon}>😊</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.inputButton}>
-            <Text style={styles.inputIcon}>📷</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.inputButton}>
-            <Text style={styles.inputIcon}>📎</Text>
+            <Ionicons name="happy" size={20} color="#64CCC5" />
           </TouchableOpacity>
           
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type a message..."
-            placeholderTextColor="#64CCC580"
-            value={message}
-            onChangeText={setMessage}
-            multiline
-          />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Type a message..."
+              placeholderTextColor="#64CCC580"
+              value={message}
+              onChangeText={setMessage}
+              multiline
+            />
+            <View style={styles.inputActions}>
+              <TouchableOpacity style={styles.inputActionButton}>
+                <Ionicons name="camera" size={16} color="#64CCC5" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inputActionButton}>
+                <Ionicons name="attach" size={16} color="#64CCC5" />
+              </TouchableOpacity>
+            </View>
+          </View>
           
-          <TouchableOpacity style={styles.inputButton}>
-            <Text style={styles.inputIcon}>🎤</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sendButton}>
-            <Text style={styles.sendIcon}>➤</Text>
-          </TouchableOpacity>
+          {message ? (
+            <TouchableOpacity style={styles.sendButton}>
+              <Ionicons name="send" size={20} color="#001C30" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.micButton}>
+              <Ionicons name="mic" size={20} color="#64CCC5" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -106,155 +134,192 @@ export function ChatWindow({ onBack }: ChatWindowProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#001C30',
+    backgroundColor: "#001C30",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#002843',
+    backgroundColor: "#002843",
     borderBottomWidth: 1,
-    borderBottomColor: '#176B8733',
+    borderBottomColor: "#176B8740",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   backButton: {
-    padding: 4,
-  },
-  backIcon: {
-    fontSize: 20,
-    color: '#DAFFFB',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#176B87',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatarContainer: {
+    position: "relative",
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#176B87",
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#DAFFFB',
+    color: "#DAFFFB",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#64CCC5",
+    borderWidth: 2,
+    borderColor: "#002843",
   },
   username: {
+    color: "#DAFFFB",
+    fontWeight: "600",
     fontSize: 16,
-    fontWeight: '600',
-    color: '#DAFFFB',
   },
   status: {
+    color: "#64CCC5",
     fontSize: 12,
-    color: '#4CAF50',
   },
-  headerRight: {
-    flexDirection: 'row',
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   headerButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerIcon: {
-    fontSize: 16,
-    color: '#64CCC5',
+    alignItems: "center",
+    justifyContent: "center",
   },
   messagesContainer: {
     flex: 1,
+  },
+  messagesContent: {
     padding: 16,
+    gap: 16,
   },
-  messageWrapper: {
-    marginBottom: 12,
-    alignItems: 'flex-start',
+  messageContainer: {
+    maxWidth: "75%",
   },
-  sentMessage: {
-    alignItems: 'flex-end',
+  sentMessageContainer: {
+    alignSelf: "flex-end",
+  },
+  receivedMessageContainer: {
+    alignSelf: "flex-start",
   },
   messageBubble: {
-    backgroundColor: '#176B8733',
-    maxWidth: '80%',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    borderBottomLeftRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
   },
   sentBubble: {
-    backgroundColor: '#64CCC5',
+    backgroundColor: "#176B87",
     borderBottomRightRadius: 4,
-    borderBottomLeftRadius: 18,
+  },
+  receivedBubble: {
+    backgroundColor: "#64CCC5",
+    borderBottomLeftRadius: 4,
   },
   messageText: {
     fontSize: 14,
-    color: '#DAFFFB',
-    marginBottom: 4,
   },
   sentText: {
-    color: '#001C30',
+    color: "#DAFFFB",
+  },
+  receivedText: {
+    color: "#001C30",
   },
   messageTime: {
-    fontSize: 11,
-    color: '#64CCC5',
+    fontSize: 12,
+    marginTop: 4,
   },
   sentTime: {
-    color: '#001C3080',
+    color: "#64CCC5",
+  },
+  receivedTime: {
+    color: "#176B87",
   },
   inputContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#002843',
+    backgroundColor: "#002843",
     borderTopWidth: 1,
-    borderTopColor: '#176B8733',
+    borderTopColor: "#176B8740",
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "flex-end",
     gap: 8,
   },
   inputButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  inputIcon: {
-    fontSize: 16,
-    color: '#64CCC5',
+  inputWrapper: {
+    flex: 1,
+    position: "relative",
   },
   textInput: {
-    flex: 1,
-    backgroundColor: '#176B8733',
-    borderRadius: 20,
+    backgroundColor: "#176B8740",
+    borderWidth: 1,
+    borderColor: "#176B8780",
+    color: "#DAFFFB",
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#DAFFFB',
-    maxHeight: 80,
+    paddingVertical: 12,
+    borderRadius: 20,
+    fontSize: 16,
+    maxHeight: 100,
+  },
+  inputActions: {
+    position: "absolute",
+    right: 8,
+    bottom: 8,
+    flexDirection: "row",
+    gap: 4,
+  },
+  inputActionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#64CCC5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#64CCC5",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  sendIcon: {
-    fontSize: 16,
-    color: '#001C30',
-    fontWeight: 'bold',
+  micButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

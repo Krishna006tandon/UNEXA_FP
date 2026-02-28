@@ -8,11 +8,23 @@ interface StreamFeedScreenProps {
 export function StreamFeedScreen({ onVideoSelect }: StreamFeedScreenProps) {
   const [searchQuery, setSearchQuery] = useState("");
   
-  const trendingVideos = [];
+  const trendingVideos = [
+    { id: 1, title: "React Native Tips", channel: "CodeMaster", views: "125K" },
+    { id: 2, title: "Building Mobile Apps", channel: "DevGuru", views: "89K" },
+    { id: 3, title: "UI/UX Best Practices", channel: "DesignPro", views: "203K" }
+  ];
 
-  const shortVideos = [];
+  const shortVideos = [
+    { id: 4, title: "Quick Tip", channel: "DevShorts", views: "45K" },
+    { id: 5, title: "Code Hack", channel: "CodeTips", views: "67K" },
+    { id: 6, title: "UI Trick", channel: "DesignShorts", views: "32K" }
+  ];
 
-  const longVideos = [];
+  const longVideos = [
+    { id: 7, title: "Complete React Native Course", channel: "CodeMaster", views: "1.2M", duration: "45:32" },
+    { id: 8, title: "Advanced State Management", channel: "ReactExpert", views: "567K", duration: "32:18" },
+    { id: 9, title: "Building with Expo", channel: "ExpoDev", views: "342K", duration: "28:45" }
+  ];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
