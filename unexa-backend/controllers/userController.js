@@ -53,12 +53,24 @@ const getUserVideos = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
+    console.log('=== getAllUsers called ===');
+    console.log('User ID:', req.user._id);
+    console.log('User object:', JSON.stringify(req.user, null, 2));
+    
     // Get all users except the current user
     const users = await User.find({ _id: { $ne: req.user._id } })
-      .select("username email avatar")
+      .select("-password") // Exclude password field
       .limit(50); // Limit for performance
+    
+    console.log(`Found ${users.length} users`);
+    console.log('First user:', users[0] ? users[0].username : 'None');
+    
     res.json(users);
   } catch (error) {
+    console.error('=== getAllUsers ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Request user:', req.user ? req.user._id : 'No user');
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -66,11 +78,19 @@ const getAllUsers = async (req, res) => {
 const searchUsers = async (req, res) => {
   try {
     const query = req.query.q || "";
+    
+    // If query is empty or just whitespace, return all users
+    if (!query || query.trim() === "") {
+      const users = await User.find().select("-password").limit(50);
+      return res.json(users);
+    }
+    
     const users = await User.find().select("username name avatar");
     const fuse = new Fuse(users, { keys: ["username", "name"], threshold: 0.4 });
     const results = fuse.search(query).map((item) => item.item);
     res.json(results);
   } catch (error) {
+    console.error('Error in searchUsers:', error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

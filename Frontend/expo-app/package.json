@@ -14,8 +14,10 @@
     "expo": "~54.0.32",
     "expo-av": "~16.0.8",
     "expo-camera": "~17.0.10",
+    "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.10",
     "expo-linear-gradient": "~15.0.8",
+    "expo-media-library": "~18.2.1",
     "expo-status-bar": "~3.0.9",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
@@ -32,6 +34,7 @@
   "private": true,
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "@types/socket.io-client": "^1.4.36",
     "typescript": "~5.9.2"
   }
 }

@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 interface User {
   _id: string;
   username: string;
+  name?: string;
   email: string;
   avatar?: string;
   isOnline?: boolean;
@@ -45,23 +46,55 @@ export function UserSearchScreen({ onUserSelect, onBack }: UserSearchScreenProps
     try {
       setLoading(true);
       console.log('Fetching users from backend...');
-      const response = await apiRequest('/api/users/all');
-      console.log('Users response:', response);
+      
+      // Try multiple approaches to get users
+      let response = [];
+      
+      // Method 1: Try /api/users/all
+      try {
+        console.log('Trying /api/users/all...');
+        response = await apiRequest('/api/users/all');
+        console.log(`Users response: ${response.length} users`);
+      } catch (primaryError) {
+        console.warn('/api/users/all failed:', primaryError.message);
+        
+        // Method 2: Try search with empty query (returns all users)
+        try {
+          console.log('Trying /api/users/search?q= (empty query)...');
+          response = await apiRequest('/api/users/search?q=');
+          console.log(`Search fallback response: ${response.length} users`);
+        } catch (searchError) {
+          console.warn('Search endpoint also failed:', searchError.message);
+          
+          // Method 3: Try search with common letter
+          try {
+            console.log('Trying /api/users/search?q=a...');
+            response = await apiRequest('/api/users/search?q=a');
+            console.log(`Search with 'a' response: ${response.length} users`);
+          } catch (letterSearchError) {
+            console.warn('All methods failed:', letterSearchError.message);
+            response = [];
+          }
+        }
+      }
       
       // Transform backend response to match component interface
-      const transformedUsers = response.map((user: any) => ({
+      const transformedUsers = Array.isArray(response) ? response.map((user: any) => ({
         _id: user._id,
-        username: user.username,
-        email: user.email,
+        username: user.username || '',
+        email: user.email || '',
         avatar: user.avatar,
-        isOnline: false // Backend doesn't provide online status yet
-      }));
+        isOnline: false
+      })) : [];
       
       setUsers(transformedUsers);
+      
+      if (transformedUsers.length === 0) {
+        console.warn('No users found in database');
+      }
     } catch (error: any) {
       console.error('Error loading users:', error);
       
-      // Handle authentication errors
       if (error.message && error.message.includes('Not authorized')) {
         Alert.alert(
           'Session Expired', 
@@ -70,28 +103,16 @@ export function UserSearchScreen({ onUserSelect, onBack }: UserSearchScreenProps
             {
               text: 'OK',
               onPress: async () => {
-                // Clear the invalid token
                 await AsyncStorage.removeItem('authToken');
                 await AsyncStorage.removeItem('lastLoginResponse');
-                // You might want to navigate to login screen here
                 Alert.alert('Please log in again to continue');
               }
             }
           ]
         );
-      } else {
-        Alert.alert('Error', 'Failed to load users from server');
       }
       
-      // Fallback to mock data
-      const mockUsers: User[] = [
-        { _id: "1", username: "alex_m", email: "alex@example.com", isOnline: true },
-        { _id: "2", username: "sarahj", email: "sarah@example.com", isOnline: true },
-        { _id: "3", username: "mikec", email: "mike@example.com", isOnline: false },
-        { _id: "4", username: "emmaw", email: "emma@example.com", isOnline: true },
-        { _id: "5", username: "davidb", email: "david@example.com", isOnline: false },
-      ];
-      setUsers(mockUsers);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -103,9 +124,13 @@ export function UserSearchScreen({ onUserSelect, onBack }: UserSearchScreenProps
   }, []);
 
   const filteredUsers = users.filter(
-    (user) =>
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (user) => {
+      const username = (user.username || '').toLowerCase().trim();
+      const email = (user.email || '').toLowerCase().trim();
+      const query = searchQuery.toLowerCase().trim();
+      
+      return username.includes(query) || email.includes(query);
+    }
   );
 
   const handleUserSelect = (user: User) => {
@@ -169,15 +194,15 @@ export function UserSearchScreen({ onUserSelect, onBack }: UserSearchScreenProps
               <View style={styles.userAvatarContainer}>
                 <View style={styles.userAvatar}>
                   <Text style={styles.avatarText}>
-                    {user.username.charAt(0).toUpperCase()}
+                    {(user.username || user.name || 'U').charAt(0).toUpperCase()}
                   </Text>
                 </View>
                 {user.isOnline && <View style={styles.onlineIndicator} />}
               </View>
               
               <View style={styles.userInfo}>
-                <Text style={styles.userName}>{user.username}</Text>
-                <Text style={styles.userUsername}>{user.email}</Text>
+                <Text style={styles.userName}>{user.username || user.name || 'Unknown User'}</Text>
+                <Text style={styles.userUsername}>{user.name ? `@${user.username}` : user.email}</Text>
               </View>
               
               <Ionicons name="chevron-forward" size={20} color="#64CCC580" />

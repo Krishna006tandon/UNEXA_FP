@@ -52,6 +52,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedChat, setSelectedChat] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [capturedImageUri, setCapturedImageUri] = useState<string | null>(null);
 
   // Check authentication on app startup
   useEffect(() => {
@@ -59,6 +61,12 @@ export default function App() {
       try {
         const token = await AsyncStorage.getItem('authToken');
         const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        const lastLoginResponse = await AsyncStorage.getItem('lastLoginResponse');
+        
+        if (lastLoginResponse) {
+          const userData = JSON.parse(lastLoginResponse);
+          setCurrentUserId(userData._id);
+        }
         
         if (token) {
           // User is logged in, go to feed
@@ -158,6 +166,7 @@ export default function App() {
               setCurrentScreen("chat-window");
             }}
             onNewChat={() => setCurrentScreen("user-search")}
+            currentUserId={currentUserId}
           />
         );
       case "user-search":
@@ -173,7 +182,18 @@ export default function App() {
           />
         );
       case "chat-window":
-        return <ChatWindow onBack={() => setCurrentScreen("chats")} />;
+        return (
+          <ChatWindow 
+            onBack={() => {
+              setSelectedChat(null);
+              setSelectedUser(null);
+              setCurrentScreen("chats");
+            }} 
+            selectedChat={selectedChat}
+            selectedUser={selectedUser}
+            currentUserId={currentUserId}
+          />
+        );
       case "snaps":
         return (
           <SnapsScreen
@@ -184,14 +204,21 @@ export default function App() {
       case "snap-camera":
         return (
           <SnapCameraScreen
-            onCapture={() => setCurrentScreen("snap-edit")}
+            onCapture={(uri) => {
+              setCapturedImageUri(uri);
+              setCurrentScreen("snap-edit");
+            }}
             onClose={() => setCurrentScreen("snaps")}
           />
         );
       case "snap-edit":
         return (
           <SnapEditScreen
-            onSend={() => setCurrentScreen("snaps")}
+            imageUri={capturedImageUri || ''}
+            onSend={() => {
+              setCapturedImageUri(null);
+              setCurrentScreen("snaps");
+            }}
             onCancel={() => setCurrentScreen("snap-camera")}
           />
         );

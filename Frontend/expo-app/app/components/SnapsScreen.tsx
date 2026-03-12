@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 interface SnapsScreenProps {
   onSnapSelect: (snapId: number) => void;
   onCamera: () => void;
+  onImageCaptured?: (uri: string) => void;
 }
 
-export function SnapsScreen({ onSnapSelect, onCamera }: SnapsScreenProps) {
+export function SnapsScreen({ onSnapSelect, onCamera, onImageCaptured }: SnapsScreenProps) {
   const [activeTab, setActiveTab] = useState('friends');
   
   const friendSnaps = [];
@@ -14,6 +16,44 @@ export function SnapsScreen({ onSnapSelect, onCamera }: SnapsScreenProps) {
   const discoverSnaps = [];
 
   const spotlightSnaps = [];
+
+  const pickImageFromGallery = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Please grant access to your photos to select images from gallery.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 5], // Instagram/Snapchat story ratio
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        console.log('Selected image:', selectedImage.uri);
+        
+        // Pass to parent component or navigate to edit screen
+        if (onImageCaptured) {
+          onImageCaptured(selectedImage.uri);
+        } else {
+          // For now, just call onCamera which should handle navigation
+          onCamera();
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to select image from gallery');
+    }
+  };
 
   const renderSnapsList = (snaps: any[], isDiscover: boolean = false) => (
     <ScrollView style={styles.snapsList} showsVerticalScrollIndicator={false}>

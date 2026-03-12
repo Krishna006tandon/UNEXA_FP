@@ -1,5 +1,7 @@
-// export const API_BASE_URL = 'http://192.168.29.104:5000';
-export const API_BASE_URL = 'https://unexa-fp.onrender.com';
+//export const API_BASE_URL = 'http://192.168.29.104:5000'; wifi 4g
+export const API_BASE_URL = 'https://unexa-fp.onrender.com'; //backend
+// export const API_BASE_URL = 'http://192.168.29.4:5000'; //wifi 5g
+
 
 export const API_ENDPOINTS = {
   // Auth endpoints

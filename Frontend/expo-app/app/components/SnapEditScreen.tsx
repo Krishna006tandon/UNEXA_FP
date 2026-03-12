@@ -1,124 +1,333 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, Alert, ActivityIndicator, Modal } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 interface SnapEditScreenProps {
-  onSend: () => void;
+  imageUri: string;
+  onSend: (uri: string) => void;
   onCancel: () => void;
 }
 
-export function SnapEditScreen({ onSend, onCancel }: SnapEditScreenProps) {
-  const [showFriendsList, setShowFriendsList] = useState(false);
-  const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
+interface Sticker {
+  id: string;
+  emoji: string;
+  x: number;
+  y: number;
+  size: number;
+}
 
-  const friends = [];
+interface TextOverlay {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  size: number;
+}
 
-  const toggleFriend = (friendId: number) => {
-    setSelectedFriends(prev => 
-      prev.includes(friendId) 
-        ? prev.filter(id => id !== friendId)
-        : [...prev, friendId]
-    );
+export function SnapEditScreen({ imageUri, onSend, onCancel }: SnapEditScreenProps) {
+  const [showStickers, setShowStickers] = useState(false);
+  const [showTextTools, setShowTextTools] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [stickers, setStickers] = useState<Sticker[]>([]);
+  const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState('none');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [textInput, setTextInput] = useState('');
+  const [textColor, setTextColor] = useState('#FFFFFF');
+  
+  const filters = [
+    { name: 'Normal', filter: 'none' },
+    { name: 'Vintage', filter: 'sepia(0.6)' },
+    { name: 'B&W', filter: 'grayscale(1)' },
+    { name: 'Vivid', filter: 'saturate(1.5)' },
+    { name: 'Warm', filter: 'brightness(1.1) sepia(0.3)' },
+    { name: 'Cool', filter: 'hue-rotate(30deg)' },
+  ];
+
+  const stickerEmojis = ['😊', '😍', '🔥', '❤️', '✨', '🎉', '💯', '👍', '😂', '🙌', '💪', '⭐'];
+
+  const colors = ['#FFFFFF', '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+
+  const addSticker = (emoji: string) => {
+    const newSticker: Sticker = {
+      id: Date.now().toString(),
+      emoji,
+      x: Math.random() * 200,
+      y: Math.random() * 300,
+      size: 40,
+    };
+    setStickers([...stickers, newSticker]);
+    setShowStickers(false);
+  };
+
+  const addTextOverlay = () => {
+    if (!textInput.trim()) return;
+    
+    const newText: TextOverlay = {
+      id: Date.now().toString(),
+      text: textInput,
+      x: 50,
+      y: 100,
+      color: textColor,
+      size: 24,
+    };
+    setTextOverlays([...textOverlays, newText]);
+    setTextInput('');
+    setShowTextTools(false);
+  };
+
+  const removeSticker = (id: string) => {
+    setStickers(stickers.filter(s => s.id !== id));
+  };
+
+  const removeText = (id: string) => {
+    setTextOverlays(textOverlays.filter(t => t.id !== id));
+  };
+
+  const handleSend = async () => {
+    setUploading(true);
+    
+    try {
+      // Compress image before sending (if it's an image)
+      let finalUri = imageUri;
+      if (imageUri && !imageUri.includes('video')) {
+        try {
+          finalUri = await compressImage(imageUri);
+          console.log('Image compressed successfully');
+        } catch (error) {
+          console.error('Compression failed, using original:', error);
+        }
+      }
+      
+      // Simulate upload progress
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+        onSend(finalUri);
+        Alert.alert('Success', 'Snap sent successfully!');
+      }, 2500);
+    } catch (error) {
+      setUploading(false);
+      setUploadProgress(0);
+      console.error('Error sending snap:', error);
+      Alert.alert('Error', 'Failed to send snap');
+    }
+  };
+
+  const compressImage = async (uri: string): Promise<string> => {
+    try {
+      // Compress and resize image for faster upload
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [
+          { resize: { width: 1080 } }, // Resize to max width 1080px
+        ],
+        { 
+          compress: 0.8, // 80% quality
+          format: ImageManipulator.SaveFormat.JPEG,
+        }
+      );
+      
+      console.log('Image compressed from original size');
+      return result.uri;
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      // Return original URI if compression fails
+      return uri;
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Snap Preview */}
-      <View style={styles.snapPreview}>
+      {/* Image Preview with Filter */}
+      <View style={[styles.imageContainer, { filter: selectedFilter }]}>
         <Image 
-          source={{ uri: "https://picsum.photos/400/600?random=snap" }}
-          style={styles.snapImage}
+          source={{ uri: imageUri }}
+          style={styles.image}
           resizeMode="cover"
         />
-        <View style={styles.snapOverlay}>
-          <Text style={styles.snapText}>✨ Your Snap ✨</Text>
-        </View>
+        
+        {/* Render Stickers */}
+        {stickers.map(sticker => (
+          <TouchableOpacity
+            key={sticker.id}
+            style={[
+              styles.sticker,
+              { left: sticker.x, top: sticker.y }
+            ]}
+            onPress={() => removeSticker(sticker.id)}
+          >
+            <Text style={{ fontSize: sticker.size }}>{sticker.emoji}</Text>
+          </TouchableOpacity>
+        ))}
+        
+        {/* Render Text Overlays */}
+        {textOverlays.map(text => (
+          <TouchableOpacity
+            key={text.id}
+            style={[
+              styles.textOverlay,
+              { left: text.x, top: text.y }
+            ]}
+            onPress={() => removeText(text.id)}
+          >
+            <Text style={{ color: text.color, fontWeight: 'bold', fontSize: text.size }}>{text.text}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Top Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={onCancel} style={styles.topButton}>
-          <Text style={styles.topButtonIcon}>✕</Text>
+          <Ionicons name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setShowFriendsList(!showFriendsList)} style={styles.topButton}>
-          <Text style={styles.topButtonIcon}>👥</Text>
+        
+        <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
+          <Ionicons name="send" size={24} color="#001C30" />
+          <Text style={styles.sendText}>Send</Text>
         </TouchableOpacity>
       </View>
 
       {/* Edit Tools */}
-      <View style={styles.editTools}>
-        <TouchableOpacity style={styles.toolButton}>
-          <Text style={styles.toolIcon}>📝</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolsContainer}>
+        <TouchableOpacity 
+          style={styles.toolButton}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <Ionicons name="color-filter" size={28} color="#64CCC5" />
+          <Text style={styles.toolLabel}>Filters</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.toolButton}
+          onPress={() => setShowStickers(!showStickers)}
+        >
+          <Ionicons name="happy" size={28} color="#64CCC5" />
+          <Text style={styles.toolLabel}>Stickers</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.toolButton}
+          onPress={() => setShowTextTools(!showTextTools)}
+        >
+          <Ionicons name="text" size={28} color="#64CCC5" />
           <Text style={styles.toolLabel}>Text</Text>
         </TouchableOpacity>
+        
         <TouchableOpacity style={styles.toolButton}>
-          <Text style={styles.toolIcon}>🎨</Text>
-          <Text style={styles.toolLabel}>Colors</Text>
+          <Ionicons name="brush" size={28} color="#64CCC5" />
+          <Text style={styles.toolLabel}>Draw</Text>
         </TouchableOpacity>
+        
         <TouchableOpacity style={styles.toolButton}>
-          <Text style={styles.toolIcon}>😊</Text>
-          <Text style={styles.toolLabel}>Emoji</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.toolButton}>
-          <Text style={styles.toolIcon}>✂️</Text>
+          <Ionicons name="crop" size={28} color="#64CCC5" />
           <Text style={styles.toolLabel}>Crop</Text>
         </TouchableOpacity>
-      </View>
+        
+        <TouchableOpacity style={styles.toolButton}>
+          <Ionicons name="refresh" size={28} color="#64CCC5" />
+          <Text style={styles.toolLabel}>Rotate</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
-      {/* Friends List */}
-      {showFriendsList && (
-        <View style={styles.friendsList}>
-          <Text style={styles.friendsTitle}>Send to Friends</Text>
-          <ScrollView style={styles.friendsScroll} showsVerticalScrollIndicator={false}>
-            {friends.map(friend => (
+      {/* Filters Panel */}
+      {showFilters && (
+        <View style={styles.panel}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {filters.map(filter => (
               <TouchableOpacity
-                key={friend.id}
+                key={filter.name}
                 style={[
-                  styles.friendItem,
-                  selectedFriends.includes(friend.id) && styles.selectedFriend
+                  styles.filterItem,
+                  selectedFilter === filter.filter && styles.selectedFilterItem
                 ]}
-                onPress={() => toggleFriend(friend.id)}
+                onPress={() => {
+                  setSelectedFilter(filter.filter);
+                  setShowFilters(false);
+                }}
               >
-                <View style={styles.friendAvatar}>
-                  <Text style={styles.friendAvatarText}>
-                    {friend.username.charAt(0).toUpperCase()}
-                  </Text>
+                <View style={[styles.filterPreview, { filter: filter.filter }]}>
+                  <Image source={{ uri: imageUri }} style={styles.filterThumbnail} />
                 </View>
-                <Text style={styles.friendUsername}>{friend.username}</Text>
-                <View style={[
-                  styles.checkbox,
-                  selectedFriends.includes(friend.id) && styles.checkedBox
-                ]}>
-                  <Text style={styles.checkIcon}>
-                    {selectedFriends.includes(friend.id) ? '✓' : ''}
-                  </Text>
-                </View>
+                <Text style={styles.filterName}>{filter.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
       )}
 
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.storyButton}>
-          <Text style={styles.storyIcon}>📖</Text>
-          <Text style={styles.storyText}>Add to Story</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={onSend}
-          style={[
-            styles.sendButton,
-            selectedFriends.length > 0 && styles.activeSendButton
-          ]}
-        >
-          <Text style={styles.sendIcon}>➤</Text>
-          <Text style={styles.sendText}>
-            Send {selectedFriends.length > 0 && `(${selectedFriends.length})`}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Stickers Panel */}
+      {showStickers && (
+        <View style={styles.panel}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {stickerEmojis.map(emoji => (
+              <TouchableOpacity
+                key={emoji}
+                style={styles.stickerItem}
+                onPress={() => addSticker(emoji)}
+              >
+                <Text style={styles.stickerEmoji}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Text Tools Panel */}
+      {showTextTools && (
+        <View style={styles.panel}>
+          <View style={styles.textInputContainer}>
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Enter text..."
+              style={styles.textInput}
+            />
+            <View style={styles.colorPicker}>
+              {colors.map(color => (
+                <TouchableOpacity
+                  key={color}
+                  style={[styles.colorOption, { backgroundColor: color }]}
+                  onPress={() => setTextColor(color)}
+                >
+                  {textColor === color && <Ionicons name="checkmark" size={16} color="#000000" />}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity onPress={addTextOverlay} style={styles.addTextButton}>
+              <Text style={styles.addTextText}>Add Text</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Upload Progress Modal */}
+      <Modal visible={uploading} transparent animationType="fade">
+        <View style={styles.uploadModal}>
+          <View style={styles.uploadContent}>
+            <ActivityIndicator size="large" color="#64CCC5" />
+            <Text style={styles.uploadText}>Sending Snap...</Text>
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressBar, { width: `${uploadProgress}%` }]} />
+            </View>
+            <Text style={styles.progressText}>{uploadProgress}%</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -127,36 +336,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#001C30',
+  },
+  imageContainer: {
+    flex: 1,
     position: 'relative',
+    overflow: 'hidden',
   },
-  snapPreview: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  snapImage: {
+  image: {
     width: '100%',
     height: '100%',
   },
-  snapOverlay: {
+  sticker: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -30,
-    marginLeft: -100,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    zIndex: 10,
   },
-  snapText: {
-    fontSize: 20,
-    color: '#FFFFFF',
-    fontWeight: '600',
+  textOverlay: {
+    position: 'absolute',
+    zIndex: 10,
+    fontWeight: 'bold',
   },
   topBar: {
     position: 'absolute',
@@ -169,161 +366,159 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 16,
-    zIndex: 10,
+    zIndex: 20,
   },
   topButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topButtonIcon: {
-    fontSize: 20,
-    color: '#FFFFFF',
-  },
-  editTools: {
-    position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 0,
+  sendButton: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    zIndex: 10,
-  },
-  toolButton: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  toolIcon: {
-    fontSize: 24,
-    color: '#FFFFFF',
-  },
-  toolLabel: {
-    fontSize: 10,
-    color: '#FFFFFF',
-  },
-  friendsList: {
-    position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
-    height: 200,
-    backgroundColor: '#002843',
-    borderRadius: 16,
-    padding: 16,
-    zIndex: 15,
-  },
-  friendsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#DAFFFB',
-    marginBottom: 12,
-  },
-  friendsScroll: {
-    flex: 1,
-  },
-  friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  selectedFriend: {
-    backgroundColor: '#176B8733',
-  },
-  friendAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#176B87',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  friendAvatarText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#DAFFFB',
-  },
-  friendUsername: {
-    flex: 1,
-    fontSize: 14,
-    color: '#DAFFFB',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#64CCC5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkedBox: {
     backgroundColor: '#64CCC5',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignItems: 'center',
+    gap: 8,
   },
-  checkIcon: {
-    fontSize: 12,
+  sendText: {
     color: '#001C30',
     fontWeight: 'bold',
+    fontSize: 16,
   },
-  bottomActions: {
+  toolsContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    paddingBottom: 40,
-    backgroundColor: '#002843',
-    borderTopWidth: 1,
-    borderTopColor: '#176B8733',
-    zIndex: 10,
-  },
-  storyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#176B8733',
+    zIndex: 20,
   },
-  storyIcon: {
-    fontSize: 16,
-    color: '#64CCC5',
-  },
-  storyText: {
-    fontSize: 14,
-    color: '#64CCC5',
-  },
-  sendButton: {
-    flexDirection: 'row',
+  toolButton: {
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: '#176B8733',
+    gap: 4,
   },
-  activeSendButton: {
+  toolLabel: {
+    color: '#64CCC5',
+    fontSize: 12,
+  },
+  panel: {
+    position: 'absolute',
+    bottom: 80,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(23, 107, 135, 0.9)',
+    padding: 16,
+    zIndex: 19,
+  },
+  filterItem: {
+    alignItems: 'center',
+    marginRight: 16,
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  selectedFilterItem: {
+    backgroundColor: 'rgba(100, 204, 197, 0.3)',
+    borderWidth: 2,
+    borderColor: '#64CCC5',
+  },
+  filterPreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  filterThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  filterName: {
+    color: '#DAFFFB',
+    fontSize: 12,
+  },
+  stickerItem: {
+    marginRight: 16,
+    padding: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
+  },
+  stickerEmoji: {
+    fontSize: 32,
+  },
+  textInputContainer: {
+    gap: 12,
+  },
+  textInput: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    color: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    fontSize: 16,
+  },
+  colorPicker: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  colorOption: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addTextButton: {
+    backgroundColor: '#64CCC5',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  addTextText: {
+    color: '#001C30',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  uploadModal: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  uploadContent: {
+    backgroundColor: '#176B87',
+    padding: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    minWidth: 300,
+  },
+  uploadText: {
+    color: '#DAFFFB',
+    fontSize: 18,
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  progressContainer: {
+    width: '100%',
+    height: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
     backgroundColor: '#64CCC5',
   },
-  sendIcon: {
+  progressText: {
+    color: '#DAFFFB',
     fontSize: 16,
-    color: '#64CCC5',
-  },
-  sendText: {
-    fontSize: 14,
-    color: '#64CCC5',
-    fontWeight: '600',
+    marginTop: 12,
   },
 });

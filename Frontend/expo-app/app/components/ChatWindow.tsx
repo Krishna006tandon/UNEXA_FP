@@ -1,26 +1,400 @@
-import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from 'expo-image-picker';
+import io from "socket.io-client";
+import { API_BASE_URL } from "../config/api";
+import { chatsAPI } from "../utils/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+interface Message {
+  _id: string;
+  chat: string;
+  sender: {
+    _id: string;
+    username: string;
+    avatar?: string;
+  };
+  content: string;
+  mediaUrl?: string;
+  mediaType: "text" | "image" | "video" | "file";
+  createdAt: string;
+  readBy?: string[];
+}
 
 interface ChatWindowProps {
   onBack: () => void;
+  selectedChat?: any;
+  selectedUser?: any;
+  currentUserId?: string | null;
 }
 
-export function ChatWindow({ onBack }: ChatWindowProps) {
+export function ChatWindow({ onBack, selectedChat, selectedUser, currentUserId }: ChatWindowProps) {
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [otherUserId, setOtherUserId] = useState<string | null>(null);
+  const [otherUsername, setOtherUsername] = useState<string>("");
+  const [isOnline, setIsOnline] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const socketRef = useRef<any | null>(null);
+  const messagesEndRef = useRef<ScrollView>(null);
 
-  const messages = [
-    { id: 1, text: "Hey! How are you?", sent: false, time: "10:30 AM" },
-    { id: 2, text: "I'm good! Just working on some projects", sent: true, time: "10:32 AM" },
-    { id: 3, text: "That's awesome! What are you building?", sent: false, time: "10:33 AM" },
-    {
-      id: 4,
-      text: "A new social media app with some cool features",
-      sent: true,
-      time: "10:35 AM",
-    },
-    { id: 5, text: "Can't wait to see it! 🚀", sent: false, time: "10:36 AM" },
-  ];
+  // Initialize chat and socket connection
+  useEffect(() => {
+    initializeChat();
+    
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [selectedChat, selectedUser]);
+
+  const initializeChat = async () => {
+    try {
+      setLoading(true);
+      
+      // Get current user ID
+      const loginResponse = await AsyncStorage.getItem('lastLoginResponse');
+      const userId = loginResponse ? JSON.parse(loginResponse)._id : currentUserId;
+      
+      if (selectedChat) {
+        // Existing chat
+        setChatId(selectedChat._id);
+        const otherId = selectedChat.members.find((id: string) => id !== userId);
+        setOtherUserId(otherId);
+        await loadMessages(selectedChat._id);
+      } else if (selectedUser) {
+        // New chat with user - create or find existing chat
+        setOtherUsername(selectedUser.username);
+        setOtherUserId(selectedUser._id);
+        const existingChat = await findOrCreateChat(selectedUser._id);
+        if (existingChat) {
+          setChatId(existingChat._id);
+          await loadMessages(existingChat._id);
+        }
+      }
+      
+      // Setup socket connection
+      setupSocketConnection(userId);
+      
+    } catch (error) {
+      console.error('Error initializing chat:', error);
+      Alert.alert('Error', 'Failed to load chat');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const findOrCreateChat = async (userId: string) => {
+    try {
+      // Validate user IDs before creating chat
+      const currentLoginResponse = await AsyncStorage.getItem('lastLoginResponse');
+      const myId = currentLoginResponse ? JSON.parse(currentLoginResponse)._id : currentUserId;
+      
+      if (!myId || !userId) {
+        console.error('Invalid user IDs for chat:', { myId, userId });
+        Alert.alert('Error', 'Unable to create chat - invalid user information');
+        return null;
+      }
+      
+      // Try to find existing chat
+      const chats = await chatsAPI.getChats();
+      const existingChat = chats.find((chat: any) => 
+        chat.members.includes(userId) && chat.members.length === 2
+      );
+      
+      if (existingChat) {
+        return existingChat;
+      }
+      
+      // Create new chat
+      const newChat = await fetch(`${API_BASE_URL}/api/chats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await AsyncStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({
+          members: [myId, userId].filter(id => id && id !== null && id !== undefined),
+          isGroup: false
+        })
+      });
+      
+      return await newChat.json();
+    } catch (error) {
+      console.error('Error finding/creating chat:', error);
+      return null;
+    }
+  };
+
+  const loadMessages = async (chatId: string) => {
+    try {
+      const response = await chatsAPI.getMessages(chatId);
+      if (response && Array.isArray(response.data)) {
+        setMessages(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
+
+  const setupSocketConnection = (userId: string) => {
+    try {
+      const socket = io(API_BASE_URL, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
+
+      socket.on('connect', () => {
+        console.log('Socket connected');
+        socket.emit('user:online', { userId });
+        
+        // Join the chat room if chatId exists
+        if (chatId) {
+          socket.emit('chat:join', { chatId });
+          console.log('Joined chat room:', chatId);
+        }
+      });
+
+      socket.on('chat:message', (newMessage: Message) => {
+        console.log('New message received:', newMessage);
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(msg => msg._id === newMessage._id)) {
+            return prev;
+          }
+          return [...prev, newMessage];
+        });
+        
+        // Mark as read
+        if (newMessage.sender._id !== userId) {
+          socket.emit('chat:read', { chatId, userId });
+        }
+      });
+
+      socket.on('chat:typing', (data: { chatId: string, userId: string }) => {
+        if (data.userId !== userId) {
+          setTyping(true);
+          setTimeout(() => setTyping(false), 3000);
+        }
+      });
+
+      socket.on('user:status', (data: { userId: string, isOnline: boolean }) => {
+        if (data.userId === otherUserId) {
+          setIsOnline(data.isOnline);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
+
+      socketRef.current = socket;
+    } catch (error) {
+      console.error('Error setting up socket:', error);
+    }
+  };
+
+  // Join chat room when chatId changes
+  useEffect(() => {
+    if (chatId && socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('chat:join', { chatId });
+      console.log('Joined chat room after chatId set:', chatId);
+    }
+  }, [chatId]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollToEnd({ animated: true });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!message.trim() || !chatId || sending) return;
+
+    try {
+      setSending(true);
+      const currentLoginResponse = await AsyncStorage.getItem('lastLoginResponse');
+      const senderId = currentLoginResponse ? JSON.parse(currentLoginResponse)._id : currentUserId;
+
+      console.log('Sending message:', { chatId, senderId, content: message.trim() });
+      console.log('Socket connected:', socketRef.current?.connected);
+
+      // Send via socket for real-time delivery
+      if (socketRef.current && socketRef.current.connected) {
+        console.log('Emitting chat:message via socket');
+        socketRef.current.emit('chat:message', {
+          chatId,
+          senderId,
+          content: message.trim(),
+          mediaType: 'text'
+        });
+      } else {
+        console.log('Socket not connected, using REST API fallback');
+        // Fallback to REST API
+        await chatsAPI.sendMessage(chatId, {
+          content: message.trim(),
+          mediaType: 'text'
+        });
+      }
+
+      setMessage("");
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleTyping = (text: string) => {
+    setMessage(text);
+    
+    // Emit typing indicator
+    if (socketRef.current && socketRef.current.connected && chatId) {
+      socketRef.current.emit('chat:typing', {
+        chatId,
+        userId: currentUserId
+      });
+    }
+  };
+
+  const pickImageFromGallery = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Please grant access to your photos to select images from gallery.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        await uploadAndSendMedia(selectedImage.uri, 'image');
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to select image from gallery');
+    }
+  };
+
+  const takePhotoFromCamera = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Please grant camera access to take photos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const photo = result.assets[0];
+        await uploadAndSendMedia(photo.uri, 'image');
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  const uploadAndSendMedia = async (uri: string, mediaType: 'image' | 'video') => {
+    try {
+      setSending(true);
+      
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append('media', {
+        uri,
+        type: mediaType === 'image' ? 'image/jpeg' : 'video/mp4',
+        name: `chat_media_${Date.now()}.${mediaType === 'image' ? 'jpg' : 'mp4'}`,
+      } as any);
+
+      // Upload to backend
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE_URL}/api/chats/${chatId}/media`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const uploadData = await response.json();
+        
+        // Send message with media URL via socket
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit('chat:message', {
+            chatId,
+            senderId: currentUserId,
+            content: '',
+            mediaUrl: uploadData.mediaUrl,
+            mediaType: uploadData.mediaType,
+          });
+        } else {
+          // Fallback to REST API
+          await chatsAPI.sendMessage(chatId, {
+            content: '',
+            mediaUrl: uploadData.mediaUrl,
+            mediaType: uploadData.mediaType,
+          });
+        }
+        
+        Alert.alert('Success', 'Media sent successfully!');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Error sending media:', error);
+      Alert.alert('Error', 'Failed to send media');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
+  const getDisplayName = () => {
+    if (selectedChat) {
+      return selectedChat.name || otherUsername || 'Unknown';
+    }
+    return selectedUser?.username || 'Unknown';
+  };
 
   return (
     <View style={styles.container}>
@@ -33,13 +407,17 @@ export function ChatWindow({ onBack }: ChatWindowProps) {
           <View style={styles.userInfo}>
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>A</Text>
+                <Text style={styles.avatarText}>
+                  {getDisplayName().charAt(0).toUpperCase()}
+                </Text>
               </View>
-              <View style={styles.onlineIndicator} />
+              {isOnline && <View style={styles.onlineIndicator} />}
             </View>
             <View>
-              <Text style={styles.username}>alex_m</Text>
-              <Text style={styles.status}>Online</Text>
+              <Text style={styles.username}>{getDisplayName()}</Text>
+              <Text style={styles.status}>
+                {typing ? 'Typing...' : isOnline ? 'Online' : 'Offline'}
+              </Text>
             </View>
           </View>
         </View>
@@ -58,37 +436,71 @@ export function ChatWindow({ onBack }: ChatWindowProps) {
       </View>
 
       {/* Messages */}
-      <ScrollView style={styles.messagesContainer} contentContainerStyle={styles.messagesContent}>
-        {messages.map((msg, index) => (
-          <View 
-            key={msg.id} 
-            style={[
-              styles.messageContainer, 
-              msg.sent ? styles.sentMessageContainer : styles.receivedMessageContainer
-            ]}
-          >
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#64CCC5" />
+        </View>
+      ) : (
+        <ScrollView 
+          ref={messagesEndRef}
+          style={styles.messagesContainer} 
+          contentContainerStyle={styles.messagesContent}
+          onContentSizeChange={() => scrollToBottom()}
+        >
+          {messages.map((msg) => (
             <View 
+              key={msg._id} 
               style={[
-                styles.messageBubble, 
-                msg.sent ? styles.sentBubble : styles.receivedBubble
+                styles.messageContainer, 
+                msg.sender._id === currentUserId ? styles.sentMessageContainer : styles.receivedMessageContainer
               ]}
             >
-              <Text style={[
-                styles.messageText, 
-                msg.sent ? styles.sentText : styles.receivedText
-              ]}>
-                {msg.text}
-              </Text>
-              <Text style={[
-                styles.messageTime, 
-                msg.sent ? styles.sentTime : styles.receivedTime
-              ]}>
-                {msg.time}
-              </Text>
+              <View 
+                style={[
+                  styles.messageBubble, 
+                  msg.sender._id === currentUserId ? styles.sentBubble : styles.receivedBubble
+                ]}
+              >
+                {/* Render text content */}
+                {msg.content ? (
+                  <Text style={[
+                    styles.messageText, 
+                    msg.sender._id === currentUserId ? styles.sentText : styles.receivedText
+                  ]}>
+                    {msg.content}
+                  </Text>
+                ) : null}
+
+                {/* Render media if exists */}
+                {msg.mediaUrl && (
+                  <View style={styles.mediaContainer}>
+                    {msg.mediaType === 'image' ? (
+                      <Image 
+                        source={{ uri: msg.mediaUrl }} 
+                        style={styles.messageImage}
+                        resizeMode="cover"
+                      />
+                    ) : msg.mediaType === 'video' ? (
+                      <View style={styles.videoPlaceholder}>
+                        <Ionicons name="videocam" size={40} color="#64CCC5" />
+                        <Text style={styles.videoText}>Video Message</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
+
+                {/* Timestamp */}
+                <Text style={[
+                  styles.messageTime, 
+                  msg.sender._id === currentUserId ? styles.sentTime : styles.receivedTime
+                ]}>
+                  {formatTime(msg.createdAt)}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      )}
 
       {/* Input Bar */}
       <View style={styles.inputContainer}>
@@ -103,21 +515,33 @@ export function ChatWindow({ onBack }: ChatWindowProps) {
               placeholder="Type a message..."
               placeholderTextColor="#64CCC580"
               value={message}
-              onChangeText={setMessage}
+              onChangeText={handleTyping}
               multiline
+              onSubmitEditing={sendMessage}
+              returnKeyType="send"
+              blurOnSubmit={false}
             />
             <View style={styles.inputActions}>
-              <TouchableOpacity style={styles.inputActionButton}>
+              <TouchableOpacity 
+                style={styles.inputActionButton}
+                onPress={takePhotoFromCamera}
+              >
                 <Ionicons name="camera" size={16} color="#64CCC5" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.inputActionButton}>
+              <TouchableOpacity 
+                style={styles.inputActionButton}
+                onPress={pickImageFromGallery}
+              >
                 <Ionicons name="attach" size={16} color="#64CCC5" />
               </TouchableOpacity>
             </View>
           </View>
           
           {message ? (
-            <TouchableOpacity style={styles.sendButton}>
+            <TouchableOpacity 
+              style={styles.sendButton}
+              onPress={sendMessage}
+            >
               <Ionicons name="send" size={20} color="#001C30" />
             </TouchableOpacity>
           ) : (
@@ -135,6 +559,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#001C30",
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   header: {
     flexDirection: "row",
@@ -258,6 +687,29 @@ const styles = StyleSheet.create({
   },
   receivedTime: {
     color: "#176B87",
+  },
+  mediaContainer: {
+    marginTop: 8,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+  },
+  videoPlaceholder: {
+    width: 200,
+    height: 200,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  videoText: {
+    color: "#DAFFFB",
+    fontSize: 14,
   },
   inputContainer: {
     paddingHorizontal: 16,

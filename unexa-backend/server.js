@@ -20,9 +20,19 @@ const app = express();
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "*",
+    origin: [
+      'http://localhost:8081', 
+      'http://192.168.29.4:8081', 
+      'exp://192.168.29.4:8081',
+      'http://192.168.29.104:8081',
+      'exp://192.168.29.104:8081',
+      /http:\/\/192\.168\.\d+\.\d+:8081/, // Match any local IP
+      /exp:\/\/192\.168\.\d+\.\d+:8081/
+    ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true
   },
+  transports: ['websocket', 'polling']
 });
 
 const PORT = process.env.PORT || 10000;
@@ -30,7 +40,15 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 app.set("BASE_URL", BASE_URL);
 
 app.use(cors({
-  origin: ['http://localhost:8081', 'http://192.168.29.104:8081', 'exp://192.168.29.104:8081'],
+  origin: [
+    'http://localhost:8081', 
+    'http://192.168.29.4:8081', 
+    'exp://192.168.29.4:8081',
+    'http://192.168.29.104:8081',
+    'exp://192.168.29.104:8081',
+    /http:\/\/192\.168\.\d+\.\d+:8081/, // Match any local IP
+    /exp:\/\/192\.168\.\d+\.\d+:8081/
+  ],
   credentials: true
 }));
 app.use(express.json({ limit: "25mb" }));

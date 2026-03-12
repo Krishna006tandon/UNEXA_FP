@@ -1,5 +1,15 @@
 {
   "expo": {
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera.",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone.",
+          "mediaLibraryPermission": "Allow $(PRODUCT_NAME) to access your photos."
+        }
+      ]
+    ],
     "name": "expo-app",
     "slug": "expo-app",
     "version": "1.0.0",
@@ -32,4 +42,5 @@
       }
     }
   }
+  
 }
